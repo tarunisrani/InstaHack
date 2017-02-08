@@ -6,6 +6,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -13,13 +15,13 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.squareup.picasso.Callback;
-import com.squareup.picasso.Picasso;
 import com.tarunisrani.instahack.R;
+import com.tarunisrani.instahack.adapter.ImageListAdapter;
 import com.tarunisrani.instahack.helper.NetworkCall;
 import com.tarunisrani.instahack.helper.NetworkCallListener;
 import com.tarunisrani.instahack.utils.AppUtils;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -40,11 +42,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private String mFileURL = null;
     private String mImageName = null;
+    private String mUserName = null;
     private boolean isVideo = false;
+    private int no_of_files_to_download = 0;
+    private int no_of_files_downloaded = 0;
+
+    private JSONArray final_image_list;
 
     private boolean fileDownloaded = false;
     private boolean fileShareInQueue = false;
 
+    private ImageListAdapter imageListAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +62,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         performPermissionCheckOperation();
 
+        imageListAdapter = new ImageListAdapter(this);
 
         instahack_link_field = (EditText) findViewById(R.id.instahack_link_field);
         ImageView instahack_search_button = (ImageView) findViewById(R.id.instahack_search_button);
@@ -62,6 +71,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         instahack_share_button = (ImageView) findViewById(R.id.instahack_share_button);
         instahack_image_field = (ImageView) findViewById(R.id.instahack_image_field);
         instahack_progressbar = (ProgressBar) findViewById(R.id.instahack_progressbar);
+
+
+        RecyclerView instahack_recycler_view = (RecyclerView) findViewById(R.id.instahack_recycler_view);
+
+        instahack_recycler_view.setAdapter(imageListAdapter);
+
+        instahack_recycler_view.setHasFixedSize(true);
+        LinearLayoutManager linearLayout =new LinearLayoutManager(this);
+        linearLayout.setOrientation(LinearLayoutManager.VERTICAL);
+        instahack_recycler_view.setLayoutManager(linearLayout);
 
 
         instahack_search_button.setOnClickListener(this);
@@ -83,8 +102,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             instahack_download_button.setVisibility(View.GONE);
             instahack_share_button.setVisibility(View.GONE);
             fileDownloaded = fileShareInQueue = false;
+            no_of_files_downloaded = no_of_files_to_download = 0;
             new NetworkCall().getJSONDetails(CALLBACK_PARSE_LINK, url, this);
         }
+
+
+        /*final WebView myWebView = new WebView(this);
+
+        WebSettings webSettings = myWebView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        myWebView.addJavascriptInterface(new MyJavaScriptInterface(this), "HtmlViewer");
+        myWebView.setWebViewClient(new WebViewClient()
+                                 {
+                                     @Override
+                                     public void onPageFinished(WebView view, String url)
+                                     {
+                                         myWebView.loadUrl("javascript:window.HtmlViewer.showHTML" +
+                                                 "(document.getElementsByClassName('_8imhp _glz1g')[0].outerHTML);");
+                                     }
+                                 }
+        );
+        myWebView.loadUrl(url);*/
+
     }
 
     private void performAppUpdate(){
@@ -100,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void performDownloadOperation(){
-        if(mFileURL == null){
+        if(final_image_list == null){
             performSearchOperation();
         } else{
             performImageSavePermissionCheck();
@@ -108,9 +147,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void downloadFile(){
-        if(mImageName!=null) {
-            instahack_progressbar.setVisibility(View.VISIBLE);
-            new NetworkCall().downloadFile(CALLBACK_DOWNLOAD_FILE, mFileURL, mImageName, this);
+        if(final_image_list!=null) {
+//            instahack_progressbar.setVisibility(View.VISIBLE);
+            no_of_files_to_download = final_image_list.length();
+            for(int index = 0; index<no_of_files_to_download;index++){
+                try {
+                    String file_url = "";
+                    String image_name = "";
+                    JSONObject list_element = final_image_list.getJSONObject(index);
+                    isVideo = list_element.getBoolean("is_video");
+                    String image_url = list_element.getString("imagelink");
+                    if (isVideo) {
+                        file_url = list_element.getString("video_url");
+                    } else {
+                        file_url = list_element.getString("imagelink");
+                    }
+
+                    image_name = list_element.getString("filename");
+                    Log.e("image_url", image_url);
+
+                    new NetworkCall().downloadFile(CALLBACK_DOWNLOAD_FILE, file_url, mUserName, image_name, this);
+
+                } catch (JSONException exp){
+                    exp.printStackTrace();
+                }
+
+            }
         }
     }
 
@@ -145,45 +207,70 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void showImage(JSONObject jsonObject){
 
-        try {
-            isVideo = jsonObject.getBoolean("is_video");
-            String image_url = jsonObject.getString("imagelink");
-            if(isVideo){
-                mFileURL = jsonObject.getString("video_url");
-            }else{
-                mFileURL = jsonObject.getString("imagelink");
+        if(jsonObject!=null) {
+            instahack_progressbar.setVisibility(View.GONE);
+            instahack_image_field.setVisibility(View.VISIBLE);
+            instahack_download_button.setVisibility(View.VISIBLE);
+            instahack_share_button.setVisibility(View.VISIBLE);
+            try {
+                String username = jsonObject.getString("username");
+                JSONArray list = jsonObject.getJSONArray("list");
+
+                Log.e("username", username);
+                mUserName = username;
+                final_image_list = list;
+                for(int index = 0; index<list.length();index++){
+                    JSONObject list_element = list.getJSONObject(index);
+                    isVideo = list_element.getBoolean("is_video");
+                    String image_url = list_element.getString("imagelink");
+                    if (isVideo) {
+                        mFileURL = list_element.getString("video_url");
+                    } else {
+                        mFileURL = list_element.getString("imagelink");
+                    }
+
+                    imageListAdapter.addUrl(mFileURL);
+
+                    mImageName = list_element.getString("filename");
+                    Log.e("image_url", image_url);
+                    /*Picasso.with(this).load(image_url).into(instahack_image_field, new Callback() {
+                        @Override
+                        public void onSuccess() {
+                            instahack_progressbar.setVisibility(View.GONE);
+                            instahack_image_field.setVisibility(View.VISIBLE);
+                            instahack_download_button.setVisibility(View.VISIBLE);
+                            instahack_share_button.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onError() {
+                            mFileURL = mImageName = null;
+                            isVideo = false;
+                        }
+                    });*/
+                }
+
+                imageListAdapter.notifyDataSetChanged();
+
+            } catch (JSONException exp) {
+                exp.printStackTrace();
+                mFileURL = mImageName = mUserName = null;
+                isVideo = false;
             }
-
-            mImageName = jsonObject.getString("filename");
-            Picasso.with(this).load(image_url).into(instahack_image_field, new Callback() {
-                @Override
-                public void onSuccess() {
-                    instahack_progressbar.setVisibility(View.GONE);
-                    instahack_image_field.setVisibility(View.VISIBLE);
-                    instahack_download_button.setVisibility(View.VISIBLE);
-                    instahack_share_button.setVisibility(View.VISIBLE);
-                }
-
-                @Override
-                public void onError() {
-                    mFileURL = mImageName = null;
-                    isVideo = false;
-                }
-            });
-        } catch (JSONException exp){
-            exp.printStackTrace();
-            mFileURL = mImageName = null;
-            isVideo = false;
         }
     }
 
     private void performDownloadCompletedOperation(){
-        fileDownloaded = true;
-        instahack_progressbar.setVisibility(View.GONE);
-        Toast.makeText(MainActivity.this, "Download Completed", Toast.LENGTH_SHORT).show();
-        if(fileShareInQueue){
-            shareImage();
+        ++no_of_files_downloaded;
+        if(no_of_files_downloaded == no_of_files_to_download){
+            fileDownloaded = true;
+            instahack_progressbar.setVisibility(View.GONE);
+            Toast.makeText(MainActivity.this, "Download Completed", Toast.LENGTH_SHORT).show();
+            if(fileShareInQueue){
+                shareImage();
+            }
         }
+
     }
 
     private void openImageScreen(){

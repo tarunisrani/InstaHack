@@ -21,12 +21,14 @@ public class DownloadFile extends AsyncTask<Integer, String, JSONObject> {
     private int mCode = -1;
     private String mUrl;
     private String mFileName = "test.jpg";
+    private String mUserName = "defaultuser";
     private NetworkCallListener mListener;
 
-    public DownloadFile(int code, String url, String fileName,  NetworkCallListener listener) {
+    public DownloadFile(int code, String url, String username, String fileName,  NetworkCallListener listener) {
         this.mCode = code;
         this.mUrl = url;
         this.mFileName = fileName;
+        this.mUserName = username;
         this.mListener = listener;
     }
 
@@ -34,7 +36,18 @@ public class DownloadFile extends AsyncTask<Integer, String, JSONObject> {
     protected JSONObject doInBackground(Integer... params) {
 //        String filename = "image.jpg";
         File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
-        File file = new File(myFilesDir, mFileName);
+        File instaHackDir = new File(myFilesDir, "InstaHack");
+        File userDir = new File(instaHackDir, mUserName);
+        if(!instaHackDir.exists()){
+            if(instaHackDir.mkdir()){
+                userDir.mkdir();
+            }
+        }else{
+            if(!userDir.exists()){
+                userDir.mkdir();
+            }
+        }
+        File file = new File(userDir, mFileName);
 
         Log.e("DownloadFile", "Started downloading: " + mUrl);
 
@@ -46,36 +59,6 @@ public class DownloadFile extends AsyncTask<Integer, String, JSONObject> {
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
-
-        /*HttpURLConnection con = null;
-        try {
-            con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("GET");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        try {
-
-            con.setDoOutput(true);
-
-
-            InputStream is = con.getInputStream();
-            if (file.exists()) {
-                file.delete();
-            }
-            FileOutputStream fos = new FileOutputStream(file);
-            byte data[] = new byte[4096];
-            int count;
-            while ((count = is.read(data)) != -1) {
-                fos.write(data, 0, count);
-            }
-            is.close();
-            fos.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
 
         int lenghtOfFile = 0;
         try{

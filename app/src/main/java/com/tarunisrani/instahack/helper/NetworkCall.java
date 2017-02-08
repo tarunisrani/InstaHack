@@ -9,8 +9,8 @@ public class NetworkCall {
         new PageParser(code, url, listener).execute();
     }
 
-    public void downloadFile(int code, String url, String fileName, NetworkCallListener listener){
-        new DownloadFile(code, url, fileName, listener).execute();
+    public void downloadFile(int code, String url, String userName, String fileName, NetworkCallListener listener){
+        new DownloadFile(code, url, userName, fileName, listener).execute();
     }
 
 }
