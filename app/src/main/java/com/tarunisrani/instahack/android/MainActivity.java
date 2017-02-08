@@ -19,6 +19,7 @@ import com.tarunisrani.instahack.R;
 import com.tarunisrani.instahack.adapter.ImageListAdapter;
 import com.tarunisrani.instahack.helper.NetworkCall;
 import com.tarunisrani.instahack.helper.NetworkCallListener;
+import com.tarunisrani.instahack.listeners.ImageListClickListener;
 import com.tarunisrani.instahack.utils.AppUtils;
 
 import org.json.JSONArray;
@@ -27,7 +28,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, NetworkCallListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, NetworkCallListener, ImageListClickListener {
 
     private final int REQUEST_SAVE_IMAGE = 100;
     private final int CALLBACK_PARSE_LINK = 1;
@@ -76,6 +77,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         RecyclerView instahack_recycler_view = (RecyclerView) findViewById(R.id.instahack_recycler_view);
 
         instahack_recycler_view.setAdapter(imageListAdapter);
+
+        imageListAdapter.setmListener(this);
 
         instahack_recycler_view.setHasFixedSize(true);
         LinearLayoutManager linearLayout =new LinearLayoutManager(this);
@@ -229,7 +232,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         mFileURL = list_element.getString("imagelink");
                     }
 
-                    imageListAdapter.addUrl(mFileURL);
+                    imageListAdapter.addUrl(list_element);
 
                     mImageName = list_element.getString("filename");
                     Log.e("image_url", image_url);
@@ -273,11 +276,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    private void openImageScreen(){
-        Intent intent = new Intent(this, ImageViewActivity.class);
-        intent.putExtra("IMAGE", mImageName);
-        intent.putExtra("ISVIDEO", isVideo);
-        startActivity(intent);
+    private void openImageScreen(int position){
+
+        try {
+            JSONObject jsonObject = final_image_list.getJSONObject(position);
+            Intent intent = new Intent(this, ImageViewActivity.class);
+            intent.putExtra("IMAGE_LINK", jsonObject.getString("imagelink"));
+            intent.putExtra("FILE_NAME", jsonObject.getString("filename"));
+            intent.putExtra("IS_VIDEO", jsonObject.getBoolean("is_video"));
+            intent.putExtra("VIDEO_URL", jsonObject.getString("video_url"));
+            intent.putExtra("USER_NAME", mUserName);
+
+            startActivity(intent);
+        }catch (JSONException exp){
+            exp.printStackTrace();
+        }
     }
 
     @Override
@@ -294,7 +307,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 performShareOperation();
                 break;
             case R.id.instahack_image_field:
-                openImageScreen();
+                openImageScreen(0);
                 break;
         }
     }
@@ -318,6 +331,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.v("Image save", "Permision granted");
             performDownloadOperation();
         }
+    }
+
+    @Override
+    public void onItemClick(int position) {
+        openImageScreen(position);
     }
 }
 

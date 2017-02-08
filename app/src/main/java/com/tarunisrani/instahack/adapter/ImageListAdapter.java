@@ -2,6 +2,7 @@ package com.tarunisrani.instahack.adapter;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +11,10 @@ import android.widget.ImageView;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 import com.tarunisrani.instahack.R;
+import com.tarunisrani.instahack.listeners.ImageListClickListener;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 
@@ -18,19 +23,25 @@ import java.util.ArrayList;
  */
 public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.ViewHolder> {
 
-    private ArrayList<String> mList = new ArrayList<>();
+    public void setmListener(ImageListClickListener mListener) {
+        this.mListener = mListener;
+    }
+
+    private ImageListClickListener mListener;
+
+    private ArrayList<JSONObject> mList = new ArrayList<>();
 
     private Context mContext;
 
-    public void addUrl(String expense){
-        mList.add(expense);
+    public void addUrl(JSONObject jsonObject){
+        mList.add(jsonObject);
     }
 
-    public String getItem(int position){
+    public JSONObject getItem(int position){
         return mList.get(position);
     }
 
-    public String removeItem(int position){
+    public JSONObject removeItem(int position){
         return mList.remove(position);
     }
 
@@ -46,8 +57,20 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
-        String url = mList.get(position);
-        holder.setImage(mContext, url);
+        JSONObject jsonObject = mList.get(position);
+        try {
+            holder.setImage(mContext, jsonObject);
+        }catch (JSONException exp){
+            exp.printStackTrace();
+        }
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(mListener!=null){
+                    mListener.onItemClick(position);
+                }
+            }
+        });
     }
 
     @Override
@@ -59,14 +82,24 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
         private ImageView instahack_list_image_field;
 
-        public void setImage(Context context, String url){
-            Picasso.with(context).load(url).into(instahack_list_image_field, new Callback() {
+        public void setImage(Context context, JSONObject jsonObject) throws JSONException{
+
+            String image_url = jsonObject.getString("imagelink");
+
+            /*if (isVideo) {
+                file_url = jsonObject.getString("video_url");
+            } else {
+                file_url = jsonObject.getString("imagelink");
+            }*/
+
+            Picasso.with(context).load(image_url).into(instahack_list_image_field, new Callback() {
                 @Override
                 public void onSuccess() {
                 }
 
                 @Override
                 public void onError() {
+                    Log.e("Error", "Error occurred while loading image");
                 }
             });
         }
