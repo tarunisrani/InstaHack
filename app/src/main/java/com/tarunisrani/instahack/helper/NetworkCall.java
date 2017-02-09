@@ -5,8 +5,8 @@ package com.tarunisrani.instahack.helper;
  */
 public class NetworkCall {
 
-    public void getJSONDetails(int code, String url, NetworkCallListener listener){
-        new PageParser(code, url, listener).execute();
+    public void getJSONDetails(int code, String url, boolean parseAllPages, NetworkCallListener listener){
+        new PageParser(code, url, parseAllPages, listener).execute();
     }
 
     public void downloadFile(int code, String url, String userName, String fileName, NetworkCallListener listener){

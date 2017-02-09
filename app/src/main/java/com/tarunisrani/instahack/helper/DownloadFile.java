@@ -49,6 +49,7 @@ public class DownloadFile extends AsyncTask<Integer, String, JSONObject> {
         }
         File file = new File(userDir, mFileName);
 
+
         Log.e("DownloadFile", "Started downloading: " + mUrl);
 
         int count;

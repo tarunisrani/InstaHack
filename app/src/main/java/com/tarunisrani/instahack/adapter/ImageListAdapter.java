@@ -2,15 +2,16 @@ package com.tarunisrani.instahack.adapter;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 
-import com.squareup.picasso.Callback;
+import com.android.volley.toolbox.ImageLoader;
+import com.android.volley.toolbox.NetworkImageView;
+import com.squareup.picasso.LruCache;
 import com.squareup.picasso.Picasso;
 import com.tarunisrani.instahack.R;
+import com.tarunisrani.instahack.helper.MySingleton;
 import com.tarunisrani.instahack.listeners.ImageListClickListener;
 
 import org.json.JSONException;
@@ -32,6 +33,7 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
     private ArrayList<JSONObject> mList = new ArrayList<>();
 
     private Context mContext;
+    private ImageLoader imageLoader;
 
     public void addUrl(JSONObject jsonObject){
         mList.add(jsonObject);
@@ -41,12 +43,19 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
         return mList.get(position);
     }
 
+    public void clear(){
+        mList.clear();
+    }
+
     public JSONObject removeItem(int position){
         return mList.remove(position);
     }
 
     public ImageListAdapter(Context context){
         mContext = context;
+        Picasso myPicassoInstance = new Picasso.Builder(context).memoryCache(new LruCache(1024*1024*30)).build();
+        Picasso.setSingletonInstance(myPicassoInstance);
+        Picasso.with(context).setLoggingEnabled(true);
     }
 
     @Override
@@ -80,11 +89,14 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
     public class ViewHolder extends RecyclerView.ViewHolder{
 
-        private ImageView instahack_list_image_field;
+        private NetworkImageView instahack_list_image_field;
 
-        public void setImage(Context context, JSONObject jsonObject) throws JSONException{
+        public void setImage(final Context context, JSONObject jsonObject) throws JSONException{
 
-            String image_url = jsonObject.getString("imagelink");
+            String salt = String.valueOf(System.currentTimeMillis());
+
+            final String thumbnail_url = jsonObject.getString("thumbnail_link");//+"?"+salt;
+            final String image_url = jsonObject.getString("imagelink");//+"?"+salt;
 
             /*if (isVideo) {
                 file_url = jsonObject.getString("video_url");
@@ -92,21 +104,31 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
                 file_url = jsonObject.getString("imagelink");
             }*/
 
-            Picasso.with(context).load(image_url).into(instahack_list_image_field, new Callback() {
+            /*Picasso.with(context).load((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url).networkPolicy(NetworkPolicy.NO_CACHE, NetworkPolicy.NO_STORE).into(instahack_list_image_field, new Callback() {
                 @Override
                 public void onSuccess() {
+//                    Picasso.with(context).invalidate((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url);
                 }
 
                 @Override
                 public void onError() {
                     Log.e("Error", "Error occurred while loading image");
                 }
-            });
+            });*/
+
+
+            imageLoader = MySingleton.getInstance(mContext)
+                    .getImageLoader();
+            imageLoader.get((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url, ImageLoader.getImageListener(instahack_list_image_field,
+                    android.R.drawable.ic_menu_gallery, android.R.drawable
+                            .ic_dialog_alert));
+            instahack_list_image_field.setImageUrl((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url, imageLoader);
+
         }
 
         public ViewHolder(View itemView) {
            super(itemView);
-            this.instahack_list_image_field = (ImageView) itemView.findViewById(R.id.instahack_list_image_field);
+            this.instahack_list_image_field = (NetworkImageView) itemView.findViewById(R.id.instahack_list_image_field);
         }
     }
 }

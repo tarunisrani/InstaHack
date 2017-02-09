@@ -18,11 +18,13 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
     private int mCode = -1;
     private NetworkCallListener mListener;
     private String mUrl;
+    private boolean mParseAllPages;
 
-    public PageParser(int code, String url, NetworkCallListener listener){
+    public PageParser(int code, String url, boolean parseAllPages, NetworkCallListener listener){
         this.mCode = code;
         this.mListener = listener;
         this.mUrl = url;
+        this.mParseAllPages = parseAllPages;
     }
 
     @Override
@@ -80,9 +82,14 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
                             list_of_images.put(processPostPageFromProfile(node));
                         }
                         JSONObject page_info = getPageInfo(media);
-//                        has_next_page = page_info.optBoolean("has_next_page", false);
-                        has_next_page = false;
-                        end_cursor = page_info.getString("end_cursor");
+
+                        if(mParseAllPages){
+                            has_next_page = page_info.optBoolean("has_next_page", false);
+                            end_cursor = page_info.getString("end_cursor");
+                        }else{
+                            has_next_page = false;
+                            end_cursor = null;
+                        }
                     } else if (isPostPage(entry_data)) {
                         JSONArray PostPage = entry_data.getJSONArray("PostPage");
                         JSONObject media = getMedia(PostPage.getJSONObject(0));
@@ -117,6 +124,7 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
 
     private JSONObject processPostPage(JSONObject media) throws JSONException {
         String link = "";
+        String thumbnail_link = "";
         String code = "";
         String video_url = "";
         boolean is_video = false;
@@ -126,12 +134,14 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
         if(is_video){
             video_url = getVideoUrl(media);
         }
+        thumbnail_link = getThumbnailSrc(media);
         link = getDisplaySrc(media);
         code = getCode(media);
 
         System.out.println("Link : " + link);
 
         JSONObject fileDetail = new JSONObject();
+        fileDetail.put("thumbnail_link", thumbnail_link!=null?thumbnail_link:"");
         fileDetail.put("imagelink", link);
         fileDetail.put("filename", code+(is_video?".mp4":".jpg"));
         fileDetail.put("is_video", is_video);
@@ -242,6 +252,13 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
 
     private String getDisplaySrc(JSONObject jsonObject) throws JSONException{
         return jsonObject.getString("display_src");
+    }
+
+    private String getThumbnailSrc(JSONObject jsonObject) throws JSONException{
+        if(jsonObject.has("thumbnail_src")){
+            return jsonObject.optString("thumbnail_src", null);
+        }
+        return null;
     }
 
     private String getVideoUrl(JSONObject jsonObject) throws JSONException{
