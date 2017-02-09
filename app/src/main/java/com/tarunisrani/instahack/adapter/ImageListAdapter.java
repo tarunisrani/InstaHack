@@ -8,8 +8,6 @@ import android.view.ViewGroup;
 
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.NetworkImageView;
-import com.squareup.picasso.LruCache;
-import com.squareup.picasso.Picasso;
 import com.tarunisrani.instahack.R;
 import com.tarunisrani.instahack.helper.MySingleton;
 import com.tarunisrani.instahack.listeners.ImageListClickListener;
@@ -53,9 +51,6 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
     public ImageListAdapter(Context context){
         mContext = context;
-        Picasso myPicassoInstance = new Picasso.Builder(context).memoryCache(new LruCache(1024*1024*30)).build();
-        Picasso.setSingletonInstance(myPicassoInstance);
-        Picasso.with(context).setLoggingEnabled(true);
     }
 
     @Override
@@ -97,24 +92,6 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
             final String thumbnail_url = jsonObject.getString("thumbnail_link");//+"?"+salt;
             final String image_url = jsonObject.getString("imagelink");//+"?"+salt;
-
-            /*if (isVideo) {
-                file_url = jsonObject.getString("video_url");
-            } else {
-                file_url = jsonObject.getString("imagelink");
-            }*/
-
-            /*Picasso.with(context).load((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url).networkPolicy(NetworkPolicy.NO_CACHE, NetworkPolicy.NO_STORE).into(instahack_list_image_field, new Callback() {
-                @Override
-                public void onSuccess() {
-//                    Picasso.with(context).invalidate((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url);
-                }
-
-                @Override
-                public void onError() {
-                    Log.e("Error", "Error occurred while loading image");
-                }
-            });*/
 
 
             imageLoader = MySingleton.getInstance(mContext)

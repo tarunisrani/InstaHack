@@ -6,14 +6,13 @@ import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.MediaController;
-import android.widget.Toast;
 import android.widget.VideoView;
 
-import com.squareup.picasso.Callback;
-import com.squareup.picasso.Picasso;
+import com.android.volley.toolbox.ImageLoader;
+import com.android.volley.toolbox.NetworkImageView;
 import com.tarunisrani.instahack.R;
+import com.tarunisrani.instahack.helper.MySingleton;
 import com.tarunisrani.instahack.helper.NetworkCall;
 import com.tarunisrani.instahack.helper.NetworkCallListener;
 
@@ -33,7 +32,7 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
 
 
     private VideoView videoView;
-    private ImageView imageView;
+    private NetworkImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +49,7 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
         }
 
         videoView = (VideoView) findViewById(R.id.videoView);
-        imageView = (ImageView) findViewById(R.id.imageView);
+        imageView = (NetworkImageView) findViewById(R.id.imageView);
         if(mIsVideo){
 //            VideoView videoView = (VideoView) findViewById(R.id.videoView);
             videoView.setVisibility(View.VISIBLE);
@@ -68,36 +67,28 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
 
     }
 
-    private void showImage(ImageView imageView){
+    private void showImage(NetworkImageView imageView){
         File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
         File instaHackDir = new File(myFilesDir, "InstaHack");
         File userDir = new File(instaHackDir, mUserName);
         File file = new File(userDir, mFileName);
 
         if(file.exists()) {
-            Picasso.with(this).load("file://" + file.getAbsolutePath()).into(imageView, new Callback() {
-                @Override
-                public void onSuccess() {
-                    Toast.makeText(ImageViewActivity.this, "Success", Toast.LENGTH_SHORT).show();
-                }
 
-                @Override
-                public void onError() {
-                    Toast.makeText(ImageViewActivity.this, "Error", Toast.LENGTH_SHORT).show();
-                }
-            });
+            ImageLoader imageLoader = MySingleton.getInstance(this)
+                    .getImageLoader();
+            imageLoader.get(file.getAbsolutePath(), ImageLoader.getImageListener(imageView,
+                    android.R.drawable.ic_menu_gallery, android.R.drawable
+                            .ic_dialog_alert));
+            imageView.setImageUrl(file.getAbsolutePath(), imageLoader);
         }else{
-            Picasso.with(this).load(mImageLink).into(imageView, new Callback() {
-                @Override
-                public void onSuccess() {
-                    Toast.makeText(ImageViewActivity.this, "Success", Toast.LENGTH_SHORT).show();
-                }
+            ImageLoader imageLoader = MySingleton.getInstance(this)
+                    .getImageLoader();
+            imageLoader.get(mImageLink, ImageLoader.getImageListener(imageView,
+                    android.R.drawable.ic_menu_gallery, android.R.drawable
+                            .ic_dialog_alert));
+            imageView.setImageUrl(mImageLink, imageLoader);
 
-                @Override
-                public void onError() {
-                    Toast.makeText(ImageViewActivity.this, "Error", Toast.LENGTH_SHORT).show();
-                }
-            });
         }
     }
 
