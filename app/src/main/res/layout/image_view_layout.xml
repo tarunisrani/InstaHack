@@ -6,8 +6,14 @@
     android:background="@android:color/white"
     tools:context=".android.MainActivity">
 
-    <com.android.volley.toolbox.NetworkImageView
+    <ImageView
         android:id="@+id/imageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
+
+    <com.android.volley.toolbox.NetworkImageView
+        android:id="@+id/networkimageView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"/>

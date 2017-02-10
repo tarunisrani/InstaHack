@@ -1,11 +1,14 @@
 package com.tarunisrani.instahack.android;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.MediaController;
 import android.widget.VideoView;
 
@@ -32,7 +35,8 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
 
 
     private VideoView videoView;
-    private NetworkImageView imageView;
+    private NetworkImageView networkimageView;
+    private ImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +53,8 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
         }
 
         videoView = (VideoView) findViewById(R.id.videoView);
-        imageView = (NetworkImageView) findViewById(R.id.imageView);
+        networkimageView = (NetworkImageView) findViewById(R.id.networkimageView);
+        imageView = (ImageView) findViewById(R.id.imageView);
         if(mIsVideo){
 //            VideoView videoView = (VideoView) findViewById(R.id.videoView);
             videoView.setVisibility(View.VISIBLE);
@@ -57,17 +62,16 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
                 showVideo(videoView);
             }
         }else{
-//            ImageView imageView = (ImageView) findViewById(R.id.imageView);
-            imageView.setVisibility(View.VISIBLE);
+//            ImageView networkimageView = (ImageView) findViewById(R.id.networkimageView);
+//            networkimageView.setVisibility(View.VISIBLE);
             if(mFileName !=null){
-                showImage(imageView);
+                showImage();
             }
         }
-
-
     }
 
-    private void showImage(NetworkImageView imageView){
+    private void showImage(){
+        Log.e("ImageActivity", "Loading image");
         File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
         File instaHackDir = new File(myFilesDir, "InstaHack");
         File userDir = new File(instaHackDir, mUserName);
@@ -75,25 +79,32 @@ public class ImageViewActivity extends AppCompatActivity implements NetworkCallL
 
         if(file.exists()) {
 
-            ImageLoader imageLoader = MySingleton.getInstance(this)
-                    .getImageLoader();
-            imageLoader.get(file.getAbsolutePath(), ImageLoader.getImageListener(imageView,
-                    android.R.drawable.ic_menu_gallery, android.R.drawable
-                            .ic_dialog_alert));
-            imageView.setImageUrl(file.getAbsolutePath(), imageLoader);
+            Log.e("ImageActivity", "Loading file from local");
+
+            networkimageView.setVisibility(View.GONE);
+            imageView.setVisibility(View.VISIBLE);
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 8;
+            final Bitmap imageBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+            imageView.setImageBitmap(imageBitmap);
+
         }else{
+
+            Log.e("ImageActivity", "Loading file from network");
+            networkimageView.setVisibility(View.VISIBLE);
+            imageView.setVisibility(View.GONE);
             ImageLoader imageLoader = MySingleton.getInstance(this)
                     .getImageLoader();
-            imageLoader.get(mImageLink, ImageLoader.getImageListener(imageView,
+            imageLoader.get(mImageLink, ImageLoader.getImageListener(networkimageView,
                     android.R.drawable.ic_menu_gallery, android.R.drawable
                             .ic_dialog_alert));
-            imageView.setImageUrl(mImageLink, imageLoader);
+            networkimageView.setImageUrl(mImageLink, imageLoader);
 
         }
     }
 
     private void showVideo(VideoView videoView){
-
+        Log.e("ImageActivity", "Loading video");
         File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
         File instaHackDir = new File(myFilesDir, "InstaHack");
         File userDir = new File(instaHackDir, mUserName);
