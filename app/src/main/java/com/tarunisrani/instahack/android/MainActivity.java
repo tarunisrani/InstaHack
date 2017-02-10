@@ -28,6 +28,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.ArrayList;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, NetworkCallListener, ImageListClickListener {
@@ -210,17 +211,46 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void shareImage(){
-        File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
-//        String fileName = "file:///sdcard/"+mImageName;
-        File file = new File(myFilesDir, mImageName);
-//        String fileName = myFilesDir+mImageName;
-        Uri uri = Uri.parse(file.getAbsolutePath());
+
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_SEND);
-//        intent.putExtra(Intent.EXTRA_TEXT, "Test Whatsapp Message");
-//        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_STREAM,uri);
+
+        int size = final_image_list.length()>10?10:final_image_list.length();
+        ArrayList<Uri> imageUriArray = new ArrayList<>();
+        for(int index = 0; index<size;index++){
+            try {
+                String image_name = "";
+                JSONObject list_element = final_image_list.getJSONObject(index);
+                image_name = list_element.getString("filename");
+                if(list_element!=null){
+                    boolean isVideo = list_element.getBoolean("is_video");
+                    if (isVideo) {
+                        mFileURL = list_element.getString("video_url");
+                        ++size;
+                        continue;
+                    }
+
+                    File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
+                    File instaHackDir = new File(myFilesDir, "InstaHack");
+                    File userDir = new File(instaHackDir, mUserName);
+                    File file = new File(userDir, image_name);
+
+                    Uri uri = Uri.parse(file.getAbsolutePath());
+
+                    imageUriArray.add(uri);
+
+
+                }
+
+
+
+            } catch (JSONException exp){
+                exp.printStackTrace();
+            }
+        }
+        intent.putExtra(Intent.EXTRA_STREAM,imageUriArray);
         intent.setType("image/jpeg");
+
         intent.setPackage("com.whatsapp");
         startActivity(intent);
     }
