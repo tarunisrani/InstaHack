@@ -5,6 +5,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.NetworkImageView;
@@ -51,6 +52,7 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
     public ImageListAdapter(Context context){
         mContext = context;
+        imageLoader = MySingleton.getInstance(mContext).getImageLoader();
     }
 
     @Override
@@ -63,7 +65,14 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
     public void onBindViewHolder(final ViewHolder holder, final int position) {
         JSONObject jsonObject = mList.get(position);
         try {
-            holder.setImage(mContext, jsonObject);
+//            holder.setImage(mContext, jsonObject);
+            final String thumbnail_url = jsonObject.getString("thumbnail_src");//+"?"+salt;
+            final String image_url = jsonObject.getString("file_url");//+"?"+salt;
+
+            imageLoader.get((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url, ImageLoader.getImageListener(holder.instahack_list_image_field,
+                    android.R.drawable.ic_menu_gallery, android.R.drawable
+                            .ic_dialog_alert));
+            holder.instahack_list_image_field.setImageUrl((thumbnail_url!=null && !thumbnail_url.isEmpty())?thumbnail_url:image_url, imageLoader);
         }catch (JSONException exp){
             exp.printStackTrace();
         }
@@ -75,6 +84,16 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
                 }
             }
         });
+
+        holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if(mListener!=null){
+                    mListener.onItemLongClick(position);
+                }
+                return true;
+            }
+        });
     }
 
     @Override
@@ -84,14 +103,24 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
     public class ViewHolder extends RecyclerView.ViewHolder{
 
-        private NetworkImageView instahack_list_image_field;
+        public NetworkImageView instahack_list_image_field;
+        private RelativeLayout selection_layer;
+        private boolean selected = false;
+
+        public boolean isSelected() {
+            return selected;
+        }
+
+        public void setSelected(boolean selected) {
+            this.selected = selected;
+        }
 
         public void setImage(final Context context, JSONObject jsonObject) throws JSONException{
 
             String salt = String.valueOf(System.currentTimeMillis());
 
-            final String thumbnail_url = jsonObject.getString("thumbnail_link");//+"?"+salt;
-            final String image_url = jsonObject.getString("imagelink");//+"?"+salt;
+            final String thumbnail_url = jsonObject.getString("thumbnail_src");//+"?"+salt;
+            final String image_url = jsonObject.getString("file_url");//+"?"+salt;
 
 
             imageLoader = MySingleton.getInstance(mContext)
@@ -106,6 +135,7 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
         public ViewHolder(View itemView) {
            super(itemView);
             this.instahack_list_image_field = (NetworkImageView) itemView.findViewById(R.id.instahack_list_image_field);
+            this.selection_layer = (RelativeLayout) itemView.findViewById(R.id.selection_layer);
         }
     }
 }

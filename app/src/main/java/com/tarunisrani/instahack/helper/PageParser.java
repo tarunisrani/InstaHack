@@ -18,20 +18,23 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
     private int mCode = -1;
     private NetworkCallListener mListener;
     private String mUrl;
-    private boolean mParseAllPages;
+//    private boolean mParseAllPages;
+    private boolean mHasNextPage;
+    private String mEndCursor;
 
-    public PageParser(int code, String url, boolean parseAllPages, NetworkCallListener listener){
+    public PageParser(int code, String url, String end_cursor, NetworkCallListener listener){
         this.mCode = code;
         this.mListener = listener;
         this.mUrl = url;
-        this.mParseAllPages = parseAllPages;
+//        this.mHasNextPage = has_next_page;
+        this.mEndCursor = end_cursor;
     }
 
     @Override
     protected JSONObject doInBackground(String... params) {
 
         try {
-            return checkForImageDetails();
+            return checkForImageDetails(this.mEndCursor);
         } catch (Exception exp) {
             exp.printStackTrace();
         }
@@ -47,18 +50,18 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
     }
 
 
-    private JSONObject checkForImageDetails() throws Exception {
+    private JSONObject checkForImageDetails(String end_cursor) throws Exception {
 
         JSONObject image_details = new JSONObject();
-        String extended_url = "?max_id=";
+        String extended_url = "";
 
         boolean has_next_page = true;
-        String end_cursor = "";
+//        String end_cursor = "";
         String username = "default_user";
 
         JSONArray list_of_images = new JSONArray();
 
-        while(has_next_page) {
+//        while(has_next_page) {
 
             extended_url = "?max_id="+end_cursor;
             Log.e("Parsing page", mUrl + extended_url);
@@ -83,13 +86,18 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
                         }
                         JSONObject page_info = getPageInfo(media);
 
-                        if(mParseAllPages){
+                        /*if(mParseAllPages){
                             has_next_page = page_info.optBoolean("has_next_page", false);
                             end_cursor = page_info.getString("end_cursor");
                         }else{
                             has_next_page = false;
                             end_cursor = null;
-                        }
+                        }*/
+
+                        has_next_page = page_info.optBoolean("has_next_page", false);
+                        end_cursor = page_info.getString("end_cursor");
+
+
                     } else if (isPostPage(entry_data)) {
                         JSONArray PostPage = entry_data.getJSONArray("PostPage");
                         JSONObject media = getMedia(PostPage.getJSONObject(0));
@@ -105,10 +113,12 @@ public class PageParser extends AsyncTask<String, String, JSONObject> {
 //                image_link = processJSON(entry_data);
                 }
             }
-        }
+//        }
 
         image_details.put("username", username);
         image_details.put("list", list_of_images);
+        image_details.put("has_next_page", has_next_page);
+        image_details.put("end_cursor", end_cursor);
 
         return image_details;
     }

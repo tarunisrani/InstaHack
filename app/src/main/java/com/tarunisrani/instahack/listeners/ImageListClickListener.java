@@ -6,4 +6,5 @@ package com.tarunisrani.instahack.listeners;
 
 public interface ImageListClickListener {
     void onItemClick(int position);
+    void onItemLongClick(int position);
 }

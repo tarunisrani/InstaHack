@@ -4,6 +4,8 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.util.Log;
 
+import com.tarunisrani.instahack.utils.String_Constants;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -36,7 +38,7 @@ public class DownloadFile extends AsyncTask<Integer, String, JSONObject> {
     protected JSONObject doInBackground(Integer... params) {
 //        String filename = "image.jpg";
         File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
-        File instaHackDir = new File(myFilesDir, "InstaHack");
+        File instaHackDir = new File(myFilesDir, String_Constants.Instahack_Dir_Name);
         File userDir = new File(instaHackDir, mUserName);
         if(!instaHackDir.exists()){
             if(instaHackDir.mkdir()){

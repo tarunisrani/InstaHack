@@ -1,12 +1,12 @@
 package com.tarunisrani.instahack.android;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -14,14 +14,18 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.VolleyError;
 import com.tarunisrani.instahack.R;
 import com.tarunisrani.instahack.adapter.ImageListAdapter;
 import com.tarunisrani.instahack.helper.NetworkCall;
 import com.tarunisrani.instahack.helper.NetworkCallListener;
 import com.tarunisrani.instahack.listeners.ImageListClickListener;
+import com.tarunisrani.instahack.listeners.NetworkResponseListener;
 import com.tarunisrani.instahack.utils.AppUtils;
+import com.tarunisrani.instahack.utils.String_Constants;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -43,18 +47,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private ImageView instahack_download_button;
     private ImageView instahack_share_button;
+    private TextView load_more_button;
 
-    private String mFileURL = null;
-    private String mImageName = null;
+//    private String mFileURL = null;
+//    private String mImageName = null;
     private String mUserName = null;
+    private String mURL = "";
+    private String mNextCursor = "";
     private boolean isVideo = false;
     private int no_of_files_to_download = 0;
     private int no_of_files_downloaded = 0;
 
-    private JSONArray final_image_list;
+    private JSONArray final_image_list = new JSONArray();
 
     private boolean fileDownloaded = false;
     private boolean fileShareInQueue = false;
+
+
+    private boolean mHasNext = true;
+    private String mEndCursor = "";
 
     private ImageListAdapter imageListAdapter;
     private RecyclerView instahack_recycler_view;
@@ -64,7 +75,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        performOldDirectoryCheckOperation();
+
         performPermissionCheckOperation();
+
+
 
         imageListAdapter = new ImageListAdapter(this);
 
@@ -75,7 +90,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         instahack_share_button = (ImageView) findViewById(R.id.instahack_share_button);
 //        instahack_image_field = (ImageView) findViewById(instahack_image_field);
         instahack_progressbar = (ProgressBar) findViewById(R.id.instahack_progressbar);
-
+        load_more_button = (TextView) findViewById(R.id.load_more_button);
 
         instahack_recycler_view = (RecyclerView) findViewById(R.id.instahack_recycler_view);
 
@@ -84,16 +99,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageListAdapter.setmListener(this);
 
         instahack_recycler_view.setHasFixedSize(true);
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 2);
         LinearLayoutManager linearLayout =new LinearLayoutManager(this);
         linearLayout.setOrientation(LinearLayoutManager.VERTICAL);
-        instahack_recycler_view.setLayoutManager(linearLayout);
+        instahack_recycler_view.setLayoutManager(gridLayoutManager);
 
 
         instahack_search_button.setOnClickListener(this);
 //        hack_install_button.setOnClickListener(this);
         instahack_download_button.setOnClickListener(this);
         instahack_share_button.setOnClickListener(this);
-//        instahack_image_field.setOnClickListener(this);
+        load_more_button.setOnClickListener(this);
+    }
+
+    private void performOldDirectoryCheckOperation(){
+        File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
+        File old = new File(myFilesDir, String_Constants.Old_Dir_Name);
+        File instaHackDir = new File(myFilesDir, String_Constants.Instahack_Dir_Name);
+        if(old.exists()){
+            old.renameTo(instaHackDir.getAbsoluteFile());
+        }
+
     }
 
     private void performPermissionCheckOperation(){
@@ -101,32 +127,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void performSearchOperation(){
-        String url = instahack_link_field.getText().toString();
-        if(!url.isEmpty()) {
-            String lastCharacter = url.substring(url.length()-1, url.length());
+        mURL = instahack_link_field.getText().toString();
+        if(!mURL.isEmpty()) {
+            String lastCharacter = mURL.substring(mURL.length()-1, mURL.length());
             Log.e("Last character", lastCharacter);
             if(!lastCharacter.equalsIgnoreCase("/")){
-                url += "/";
+                mURL += "/";
             }
-            showAlertInProfilePageScenario(url);
+            mNextCursor = "";
+            showAlertInProfilePageScenario(mURL);
         }
     }
 
-    private void performNetworkOperation(String url, boolean parseAllPages){
-        instahack_recycler_view.removeAllViews();
-        imageListAdapter.clear();
-        imageListAdapter.notifyDataSetChanged();
+    private void performNetworkOperation(String url, String next_cursor){
+
         instahack_progressbar.setVisibility(View.VISIBLE);
 //        instahack_image_field.setVisibility(View.GONE);
         instahack_download_button.setVisibility(View.GONE);
         instahack_share_button.setVisibility(View.GONE);
         fileDownloaded = fileShareInQueue = false;
         no_of_files_downloaded = no_of_files_to_download = 0;
-        new NetworkCall().getJSONDetails(CALLBACK_PARSE_LINK, url, parseAllPages, this);
+
+        new NetworkCall().getFileList(this, url, next_cursor, new NetworkResponseListener() {
+            @Override
+            public void onResponseReceived(JSONObject jsonObject) {
+                showImage(jsonObject);
+            }
+
+            @Override
+            public void onErrorReceived(VolleyError error) {
+
+            }
+        });
+
+//        new NetworkCall().getJSONDetails(CALLBACK_PARSE_LINK, url, mEndCursor, this);
     }
 
     private void showAlertInProfilePageScenario(final String url){
-        if(!url.contains("/p/")){
+        /*if(!url.contains("/p/")){
             String msg = "White loading profile page, heavy network operations are required";
             DialogInterface.OnClickListener single = new DialogInterface.OnClickListener() {
                 @Override
@@ -144,7 +182,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             AppUtils.showCustomAlertDialog(this, "Confirmation", msg, true, all, single, "Single page", "All pages");
         }else{
             performNetworkOperation(url, false);
-        }
+        }*/
+
+        instahack_recycler_view.removeAllViews();
+        imageListAdapter.clear();
+        imageListAdapter.notifyDataSetChanged();
+
+        performNetworkOperation(url, mNextCursor);
+
     }
 
     private void performAppUpdate(){
@@ -160,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void performDownloadOperation(){
-        if(final_image_list == null){
+        if(final_image_list.length() == 0){
             performSearchOperation();
         } else{
             performImageSavePermissionCheck();
@@ -168,7 +213,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void downloadFile(){
-        if(final_image_list!=null) {
+        if(final_image_list.length() != 0) {
             instahack_progressbar.setVisibility(View.VISIBLE);
             no_of_files_to_download = final_image_list.length();
             for(int index = 0; index<no_of_files_to_download;index++){
@@ -176,24 +221,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     String file_url = "";
                     String image_name = "";
                     JSONObject list_element = final_image_list.getJSONObject(index);
-                    isVideo = list_element.getBoolean("is_video");
-                    String image_url = list_element.getString("imagelink");
-                    if (isVideo) {
-                        file_url = list_element.getString("video_url");
-                    } else {
-                        file_url = list_element.getString("imagelink");
-                    }
+                    String type = list_element.getString("type");
+                    String image_url = list_element.getString("file_url");
+//                    if (type.equalsIgnoreCase(String_Constants.TYPE_VIDEO)) {
+//                        file_url = list_element.getString("video_url");
+//                    } else {
+                        file_url = list_element.getString("file_url");
+//                    }
 
-                    image_name = list_element.getString("filename");
+                    image_name = list_element.getString("file_name");
                     Log.e("image_url", image_url);
 
-                    new NetworkCall().downloadFile(CALLBACK_DOWNLOAD_FILE, file_url, mUserName, image_name, this);
+                    new NetworkCall().downloadFile(CALLBACK_DOWNLOAD_FILE, file_url, list_element.getString("username"), image_name, this);
 
                 } catch (JSONException exp){
+                    instahack_progressbar.setVisibility(View.GONE);
                     exp.printStackTrace();
                 }
-
             }
+            instahack_progressbar.setVisibility(View.GONE);
         }
     }
 
@@ -225,24 +271,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(list_element!=null){
                     boolean isVideo = list_element.getBoolean("is_video");
                     if (isVideo) {
-                        mFileURL = list_element.getString("video_url");
+//                        mFileURL = list_element.getString("video_url");
                         ++size;
                         continue;
                     }
 
                     File myFilesDir = Environment.getExternalStorageDirectory().getAbsoluteFile();
-                    File instaHackDir = new File(myFilesDir, "InstaHack");
+                    File instaHackDir = new File(myFilesDir, String_Constants.Instahack_Dir_Name);
+
                     File userDir = new File(instaHackDir, mUserName);
                     File file = new File(userDir, image_name);
 
                     Uri uri = Uri.parse(file.getAbsolutePath());
 
                     imageUriArray.add(uri);
-
-
                 }
-
-
 
             } catch (JSONException exp){
                 exp.printStackTrace();
@@ -263,30 +306,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             instahack_download_button.setVisibility(View.VISIBLE);
             instahack_share_button.setVisibility(View.VISIBLE);
             try {
-                String username = jsonObject.getString("username");
-                JSONArray list = jsonObject.getJSONArray("list");
+//                mUserName = jsonObject.optString("username", "");
+//                mEndCursor = jsonObject.optString("end_cursor", "");
+//                mHasNext = jsonObject.optBoolean("has_next_page", false);
+                mNextCursor = jsonObject.getString("next_cursor");
+                JSONArray list = jsonObject.getJSONArray("file_list");
 
-                Log.e("username", username);
-                mUserName = username;
-                final_image_list = list;
+//                final_image_list = list;
                 for(int index = 0; index<list.length();index++){
                     JSONObject list_element = list.optJSONObject(index);
                     if(list_element!=null){
-                        isVideo = list_element.getBoolean("is_video");
-                        String image_url = list_element.getString("imagelink");
-                        String thumbnail_link = list_element.getString("thumbnail_link");
-                        if (isVideo) {
+//                        isVideo = list_element.getBoolean("is_video");
+//                        String image_url = list_element.getString("imagelink");
+//                        String thumbnail_link = list_element.getString("thumbnail_link");
+                        /*if (isVideo) {
                             mFileURL = list_element.getString("video_url");
                         } else {
                             mFileURL = list_element.getString("imagelink");
-                        }
+                        }*/
 
                         imageListAdapter.addUrl(list_element);
 
-                        mImageName = list_element.getString("filename");
-                        Log.e("thumbnail_link", thumbnail_link);
+//                        mImageName = list_element.getString("filename");
+//                        Log.e("thumbnail_link", thumbnail_link);
                     }
-
+                    final_image_list.put(list_element);
                 }
 
                 Log.e("ImageListAdapter", "Size of image list: "+imageListAdapter.getItemCount());
@@ -295,7 +339,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             } catch (JSONException exp) {
                 exp.printStackTrace();
-                mFileURL = mImageName = mUserName = null;
+//                mFileURL = mImageName = mUserName = null;
                 isVideo = false;
             }
         }
@@ -318,17 +362,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         try {
             JSONObject jsonObject = final_image_list.getJSONObject(position);
             Intent intent = new Intent(this, ImageViewActivity.class);
-            intent.putExtra("IMAGE_LINK", jsonObject.getString("imagelink"));
-            intent.putExtra("FILE_NAME", jsonObject.getString("filename"));
-            intent.putExtra("IS_VIDEO", jsonObject.getBoolean("is_video"));
-            intent.putExtra("VIDEO_URL", jsonObject.getString("video_url"));
-            intent.putExtra("USER_NAME", mUserName);
+            intent.putExtra("IMAGE_LINK", jsonObject.getString("file_url"));
+            intent.putExtra("FILE_NAME", jsonObject.getString("file_name"));
+            intent.putExtra("TYPE", jsonObject.getString("type"));
+//            intent.putExtra("VIDEO_URL", jsonObject.getString("video_url"));
+            intent.putExtra("USER_NAME", jsonObject.getString("username"));
 
             startActivity(intent);
         }catch (JSONException exp){
             exp.printStackTrace();
         }
     }
+
+    private void performLoadMoreImagesOperation(){
+        if(!mURL.isEmpty() && !mNextCursor.isEmpty()) {
+            performNetworkOperation(mURL, mNextCursor);
+        }
+    }
+
 
     @Override
     public void onClick(View v) {
@@ -343,9 +394,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.instahack_share_button:
                 performShareOperation();
                 break;
-            /*case instahack_image_field:
-                openImageScreen(0);
-                break;*/
+            case R.id.load_more_button:
+                performLoadMoreImagesOperation();
+                break;
         }
     }
 
@@ -374,6 +425,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onItemClick(int position) {
         openImageScreen(position);
+    }
+
+    @Override
+    public void onItemLongClick(int position) {
+
     }
 }
 
